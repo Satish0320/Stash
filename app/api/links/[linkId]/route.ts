@@ -36,7 +36,7 @@ export async function DELETE(
 // PATCH: Update (Toggle Favorite or Archive)
 export async function PATCH(
   req: Request,
-  { params }: { params: { linkId: string } }
+  { params }: { params: Promise<{ linkId: string }> }
 ) {
   try {
     const session = await auth();
