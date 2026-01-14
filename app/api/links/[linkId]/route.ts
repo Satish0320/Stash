@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 // DELETE: Remove a link permanently
 export async function DELETE(
   req: Request,
-  { params }: { params: { linkId: string } }
+  { params }: { params: Promise<{ linkId: string }> }
 ) {
   try {
     const session = await auth();
