@@ -62,7 +62,9 @@ npm run dev
 ```
 
 🧩Key Code Highlights
+
 Metadata Scraper (app/api/metadata/route.ts)
+
 Stash uses a custom server-side scraper that mimics a real browser User-Agent. This allows it to bypass bot protection on major platforms like YouTube and X, ensuring high-quality link previews where standard scrapers fail.
 
 Optimistic UI Updates
