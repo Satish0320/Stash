@@ -23,7 +23,7 @@ export default function LandingPage() {
               Sign In
             </Link>
             <Link 
-              href="/login" 
+              href="/register" 
               className="text-sm font-medium bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white px-5 py-2.5 rounded-full transition-all hover:shadow-lg active:scale-95"
             >
               Register
