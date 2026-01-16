@@ -26,7 +26,7 @@ export function ShareFolderModal({ folder }: ShareModalProps) {
   }, []);
 
   // 3. Construct URL safely
-  const shareUrl = `${origin}/share/${folder.slug}`;
+  const shareUrl = `${origin}/share/${folder.id}`;
 
   const toggleShare = async () => {
     setIsLoading(true);

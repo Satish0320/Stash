@@ -4,8 +4,9 @@ import { Link as LinkModel } from "@prisma/client";
 import { ExternalLink, Twitter, Youtube, Trash2, Heart, Copy, Pencil, Check, RefreshCcw } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image"; // <--- Import Image component
+import Image from "next/image"; 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner"; // Added toast for better feedback
 
 interface LinkCardProps {
   link: LinkModel;
@@ -25,11 +26,22 @@ export function LinkCard({ link }: LinkCardProps) {
 
   const [isCopied, setIsCopied] = useState(false);
 
-  const meta = link.metadata as any;
+  // Robust parsing of metadata
+  const getMeta = () => {
+    try {
+      if (!link.metadata) return {};
+      if (typeof link.metadata === 'string') return JSON.parse(link.metadata);
+      return link.metadata as { image?: string; description?: string };
+    } catch {
+      return {};
+    }
+  };
+  const meta = getMeta();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(link.url);
     setIsCopied(true);
+    toast.success("Copied to clipboard");
     setTimeout(() => setIsCopied(false), 2000);
   };
 
@@ -41,46 +53,57 @@ export function LinkCard({ link }: LinkCardProps) {
     setIsDeleting(true);
     try {
       if (isArchived) {
+        // PERMANENT DELETE
         await fetch(`/api/links/${link.id}`, { method: "DELETE" });
+        toast.success("Permanently deleted");
       } else {
+        // SOFT DELETE (ARCHIVE)
         await fetch(`/api/links/${link.id}`, {
           method: "PATCH",
           body: JSON.stringify({ isArchived: true }),
         });
         setIsArchived(true);
+        toast.success("Moved to Trash");
       }
       router.refresh();
       setShowDeleteDialog(false);
     } catch {
-      console.error("Failed to delete");
+      toast.error("Failed to delete");
     } finally {
       setIsDeleting(false);
     }
   };
 
   const handleRestore = async () => {
+    // Optimistic update
     setIsArchived(false);
     try {
       await fetch(`/api/links/${link.id}`, {
         method: "PATCH",
         body: JSON.stringify({ isArchived: false }),
       });
+      toast.success("Restored from Trash");
       router.refresh();
     } catch {
-      setIsArchived(true);
+      setIsArchived(true); // Revert if failed
+      toast.error("Failed to restore");
     }
   };
 
   const toggleFavorite = async () => {
-    setIsFavorite(!isFavorite);
+    // Optimistic update
+    const newState = !isFavorite;
+    setIsFavorite(newState);
     try {
-      await fetch(`/api/links/${link.id}`, {
+      await fetch(`/api/links/${link.id}/favorite`, {
         method: "PATCH",
-        body: JSON.stringify({ isFavorite: !isFavorite }),
+        body: JSON.stringify({ isFavorite: newState }),
       });
       router.refresh();
+      toast.success(newState ? "Added to favorites" : "Removed from favorites");
     } catch {
-      setIsFavorite(isFavorite); 
+      setIsFavorite(!newState); 
+      toast.error("Failed to update favorite");
     }
   };
 
@@ -94,8 +117,9 @@ export function LinkCard({ link }: LinkCardProps) {
       setEditTitle(editTitle);
       setIsEditOpen(false);
       router.refresh();
+      toast.success("Link updated");
     } catch {
-      console.error("Failed to update");
+      toast.error("Failed to update");
     } finally {
       setIsSaving(false);
     }
@@ -105,16 +129,15 @@ export function LinkCard({ link }: LinkCardProps) {
     <>
       <div className={`break-inside-avoid bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all overflow-hidden group h-fit ${isArchived ? "opacity-75 grayscale" : ""}`}>
         
-        {/* --- IMAGE AREA (The Big Button for Mobile) --- */}
+        {/* --- IMAGE AREA --- */}
         <a href={link.url} target="_blank" rel="noopener noreferrer" className="block relative aspect-video w-full overflow-hidden bg-gray-100 dark:bg-slate-800 group-hover:opacity-95 transition-opacity cursor-pointer">
           {meta?.image ? (
-            // --- UPDATED: Using next/image ---
             <Image 
               src={meta.image} 
               alt={link.title || "Link thumbnail"} 
-              fill // Fills the parent container (which has 'relative aspect-video')
-              className="object-cover" // Ensures it covers the area correctly
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Responsive sizing hints for performance
+              fill 
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 dark:from-slate-800 dark:to-slate-900">
@@ -122,7 +145,7 @@ export function LinkCard({ link }: LinkCardProps) {
             </div>
           )}
 
-          {/* Type Icon (Visual indicator only) */}
+          {/* Type Icon */}
           <div className="absolute top-2 right-2 bg-white/90 dark:bg-slate-900/90 p-1.5 rounded-full backdrop-blur-sm z-10 shadow-sm pointer-events-none">
             {link.type === 'YOUTUBE' ? <Youtube className="h-4 w-4 text-red-600" /> : 
              link.type === 'TWITTER' ? <Twitter className="h-4 w-4 text-blue-400" /> : 
@@ -140,7 +163,6 @@ export function LinkCard({ link }: LinkCardProps) {
 
         {/* --- CONTENT AREA --- */}
         <div className="p-4">
-          {/* Title Link */}
           <a href={link.url} target="_blank" rel="noopener noreferrer" className="block font-semibold text-slate-900 dark:text-slate-100 leading-snug mb-2 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title={link.title || ""}>
             {link.title || link.url}
           </a>
@@ -150,8 +172,7 @@ export function LinkCard({ link }: LinkCardProps) {
               {new Date(link.createdAt).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' })}
             </span>
             
-            {/* ACTION BUTTONS (Cleaned up) */}
-            {/* Mobile: Always Visible (opacity-100). Desktop: Hover Only. */}
+            {/* ACTION BUTTONS (Restored original hover behavior) */}
             <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
               {isArchived ? (
                 <>
@@ -164,13 +185,13 @@ export function LinkCard({ link }: LinkCardProps) {
                 </>
               ) : (
                 <>
-                  <button onClick={() => setIsEditOpen(true)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
+                  <button onClick={() => setIsEditOpen(true)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-md text-slate-500 dark:text-slate-400 transition-colors" title="Edit">
                     <Pencil className="h-4 w-4" />
                   </button>
-                  <button onClick={handleCopy} className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
+                  <button onClick={handleCopy} className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors" title="Copy">
                     {isCopied ? <Check className="h-4 w-4 text-green-600"/> : <Copy className="h-4 w-4" />}
                   </button>
-                  <button onClick={toggleFavorite} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors">
+                  <button onClick={toggleFavorite} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors" title="Favorite">
                     <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : "text-slate-500 dark:text-slate-400"}`} />
                   </button>
                   <button onClick={handleSoftDelete} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors" title="Move to Trash">
@@ -225,7 +246,7 @@ export function LinkCard({ link }: LinkCardProps) {
               disabled={isDeleting} 
               className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? "Deleting..." : isArchived ? "Delete Forever" : "Move to Trash"}
             </button>
           </DialogFooter>
         </DialogContent>

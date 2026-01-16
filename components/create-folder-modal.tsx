@@ -20,11 +20,11 @@ export function CreateFolderModal() {
         method: "POST",
         body: JSON.stringify({ name }),
       });
-      
+
       if (res.ok) {
         setOpen(false);
         setName("");
-        router.refresh(); 
+        router.refresh();
       }
     } catch (error) {
       console.error(error);
@@ -36,7 +36,9 @@ export function CreateFolderModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20">
+        <button
+          suppressHydrationWarning
+          className="text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20">
           <Plus className="h-4 w-4" />
         </button>
       </DialogTrigger>
@@ -61,8 +63,8 @@ export function CreateFolderModal() {
           <button onClick={() => setOpen(false)} className="text-sm text-gray-500 dark:text-slate-400 font-medium px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg">
             Cancel
           </button>
-          <button 
-            onClick={handleCreate} 
+          <button
+            onClick={handleCreate}
             disabled={loading || !name.trim()}
             className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
           >
