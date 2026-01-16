@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image"; // <--- Import optimized Image component
+import Image from "next/image";
 import { ArrowRight, LayoutGrid, Share2, FolderHeart, Star } from "lucide-react";
 import { Logo } from "@/components/logo";
 
@@ -176,12 +176,19 @@ export default function LandingPage() {
              <Logo className="h-6 w-6" /> Stash.
           </div>
           <div className="text-slate-500 dark:text-slate-400 text-sm">
-            © {new Date().getFullYear()} Stash Inc. All rights reserved.
+            © {new Date().getFullYear()} Stash. All rights reserved.
           </div>
-          <div className="flex gap-6 text-sm font-medium text-slate-600 dark:text-slate-400">
-            <Link href="#" className="hover:text-slate-900 dark:hover:text-white">Privacy</Link>
-            <Link href="#" className="hover:text-slate-900 dark:hover:text-white">Terms</Link>
-            <Link href="#" className="hover:text-slate-900 dark:hover:text-white">Twitter</Link>
+          <div className="flex gap-6 text-sm font-medium text-slate-600 dark:text-slate-400 items-center">
+            <Link href="/privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-slate-900 dark:hover:text-white transition-colors">Terms</Link>
+            <a 
+              href="https://www.linkedin.com/in/satish-choudhary-236944219/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              LinkedIn
+            </a>
           </div>
         </div>
       </footer>

@@ -74,7 +74,7 @@ export function AddLinkModal() {
         title: preview.title,
         type: preview.type,
         metadata: preview.metadata,
-        folderId: selectedFolder // <--- Send the folder ID
+        folderId: selectedFolder 
       }),
     });
 
