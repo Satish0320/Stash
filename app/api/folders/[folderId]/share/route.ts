@@ -16,7 +16,7 @@ export async function PATCH(
     const folder = await prisma.folder.update({
       where: { 
         id: folderId,
-        userId: session.user.id // Ensure ownership
+        userId: session.user.id
       },
       data: { isPublic }
     });
@@ -26,3 +26,4 @@ export async function PATCH(
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+

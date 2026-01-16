@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import { z } from "zod"; 
 import { prisma } from "./prisma";
 
-
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1, "Password is required"),
@@ -51,24 +50,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login", 
   },
+  session: {
+    strategy: "jwt", 
+  },
   callbacks: {
-    // 1. Add userId to the JWT token
+    // 1. JWT Callback: Runs on login. Saves user.id to the token.
     async jwt({ token, user }) {
       if (user) {
-        token.sub = user.id; // 'sub' is the standard claim for user ID
+        token.sub = user.id; // 'sub' is the standard field for ID
       }
       return token;
     },
-    // 2. Add userId to the Session object (so you can use it in the frontend)
+    // 2. Session Callback: Runs on every page load. Reads from TOKEN, not USER.
     async session({ session, token }) {
-      if (token.sub && session.user) {
+      if (token && token.sub && session.user) {
         session.user.id = token.sub;
       }
       return session;
     },
-  },
-  session: {
-    strategy: "jwt", 
   },
   secret: process.env.AUTH_SECRET, 
 });

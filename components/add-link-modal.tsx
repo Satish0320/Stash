@@ -94,7 +94,7 @@ export function AddLinkModal() {
         </button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[95vw] max-w-md rounded-xl">
         <DialogHeader>
           <DialogTitle>Add to Stash</DialogTitle>
         </DialogHeader>

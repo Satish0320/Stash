@@ -1,10 +1,11 @@
 "use client";
 
 import { Link as LinkModel } from "@prisma/client";
-import { ExternalLink, Twitter, Youtube, Trash2, Heart, Copy, Pencil, RefreshCcw } from "lucide-react";
+import { ExternalLink, Twitter, Youtube, Trash2, Heart, Copy, Pencil, Check, RefreshCcw } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import Image from "next/image"; // <--- Import Image component
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 interface LinkCardProps {
   link: LinkModel;
@@ -13,31 +14,50 @@ interface LinkCardProps {
 export function LinkCard({ link }: LinkCardProps) {
   const router = useRouter();
   
-  // State
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isFavorite, setIsFavorite] = useState(link.isFavorite);
-  const [isArchived, setIsArchived] = useState(link.isArchived); // Track if trashed
+  const [isArchived, setIsArchived] = useState(link.isArchived);
+  
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(link.title || "");
   const [isSaving, setIsSaving] = useState(false);
 
+  const [isCopied, setIsCopied] = useState(false);
+
   const meta = link.metadata as any;
 
-  // 1. Soft Delete (Move to Trash)
+  const handleCopy = () => {
+    navigator.clipboard.writeText(link.url);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
   const handleSoftDelete = async () => {
-    setIsArchived(true); // Optimistic UI update
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
     try {
-      await fetch(`/api/links/${link.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ isArchived: true }),
-      });
+      if (isArchived) {
+        await fetch(`/api/links/${link.id}`, { method: "DELETE" });
+      } else {
+        await fetch(`/api/links/${link.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ isArchived: true }),
+        });
+        setIsArchived(true);
+      }
       router.refresh();
+      setShowDeleteDialog(false);
     } catch {
-      setIsArchived(false); // Revert on error
+      console.error("Failed to delete");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  // 2. Restore (Remove from Trash)
   const handleRestore = async () => {
     setIsArchived(false);
     try {
@@ -51,19 +71,6 @@ export function LinkCard({ link }: LinkCardProps) {
     }
   };
 
-  // 3. Permanent Delete
-  const handlePermanentDelete = async () => {
-    if (!confirm("This will permanently delete the link. Are you sure?")) return;
-    setIsDeleting(true);
-    try {
-      await fetch(`/api/links/${link.id}`, { method: "DELETE" });
-      router.refresh(); 
-    } catch {
-      setIsDeleting(false);
-    }
-  };
-
-  // 4. Toggle Favorite
   const toggleFavorite = async () => {
     setIsFavorite(!isFavorite);
     try {
@@ -76,8 +83,6 @@ export function LinkCard({ link }: LinkCardProps) {
       setIsFavorite(isFavorite); 
     }
   };
-
-  const handleCopy = () => navigator.clipboard.writeText(link.url);
 
   const saveEdit = async () => {
     setIsSaving(true);
@@ -96,66 +101,79 @@ export function LinkCard({ link }: LinkCardProps) {
     }
   };
 
-  if (isDeleting) return null; 
-
   return (
     <>
-      <div className={`break-inside-avoid bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden group mb-6 ${isArchived ? "opacity-75 grayscale" : ""}`}>
+      <div className={`break-inside-avoid bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all overflow-hidden group h-fit ${isArchived ? "opacity-75 grayscale" : ""}`}>
         
-        {/* --- IMAGE AREA --- */}
-        {meta?.image ? (
-          <div className="relative aspect-video w-full overflow-hidden bg-gray-100 group-hover:opacity-95 transition-opacity">
-            <img src={meta.image} alt={link.title || ""} className="w-full h-full object-cover" />
-            <div className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full backdrop-blur-sm z-10 shadow-sm">
-              {link.type === 'YOUTUBE' ? <Youtube className="h-4 w-4 text-red-600" /> : 
-               link.type === 'TWITTER' ? <Twitter className="h-4 w-4 text-blue-400" /> : 
-               <ExternalLink className="h-4 w-4 text-gray-600" />}
+        {/* --- IMAGE AREA (The Big Button for Mobile) --- */}
+        <a href={link.url} target="_blank" rel="noopener noreferrer" className="block relative aspect-video w-full overflow-hidden bg-gray-100 dark:bg-slate-800 group-hover:opacity-95 transition-opacity cursor-pointer">
+          {meta?.image ? (
+            // --- UPDATED: Using next/image ---
+            <Image 
+              src={meta.image} 
+              alt={link.title || "Link thumbnail"} 
+              fill // Fills the parent container (which has 'relative aspect-video')
+              className="object-cover" // Ensures it covers the area correctly
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Responsive sizing hints for performance
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 dark:from-slate-800 dark:to-slate-900">
+               <ExternalLink className="h-8 w-8 text-gray-300 dark:text-slate-600" />
             </div>
+          )}
+
+          {/* Type Icon (Visual indicator only) */}
+          <div className="absolute top-2 right-2 bg-white/90 dark:bg-slate-900/90 p-1.5 rounded-full backdrop-blur-sm z-10 shadow-sm pointer-events-none">
+            {link.type === 'YOUTUBE' ? <Youtube className="h-4 w-4 text-red-600" /> : 
+             link.type === 'TWITTER' ? <Twitter className="h-4 w-4 text-blue-400" /> : 
+             <ExternalLink className="h-4 w-4 text-gray-600 dark:text-slate-400" />}
           </div>
-        ) : (
-          <div className="p-6 bg-linear-to-br from-gray-50 to-gray-100 border-b border-gray-100">
-             <div className="flex justify-between items-start">
-                <div className="p-2 bg-white rounded-lg shadow-sm">
-                  <ExternalLink className="h-5 w-5 text-gray-400" />
-                </div>
-             </div>
-          </div>
-        )}
+
+          {isCopied && (
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center animate-in fade-in duration-200 z-20">
+              <div className="bg-white text-slate-900 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg">
+                <Check className="h-3 w-3 text-green-600" /> Copied!
+              </div>
+            </div>
+          )}
+        </a>
 
         {/* --- CONTENT AREA --- */}
         <div className="p-4">
-          <h3 className="font-semibold text-slate-900 leading-snug mb-2 line-clamp-2" title={link.title || ""}>
+          {/* Title Link */}
+          <a href={link.url} target="_blank" rel="noopener noreferrer" className="block font-semibold text-slate-900 dark:text-slate-100 leading-snug mb-2 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title={link.title || ""}>
             {link.title || link.url}
-          </h3>
+          </a>
           
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-            <span className="text-xs text-slate-400">
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-slate-800">
+            <span className="text-xs text-slate-400 dark:text-slate-500">
               {new Date(link.createdAt).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' })}
             </span>
             
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {/* Logic for Trash vs Normal View */}
+            {/* ACTION BUTTONS (Cleaned up) */}
+            {/* Mobile: Always Visible (opacity-100). Desktop: Hover Only. */}
+            <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
               {isArchived ? (
                 <>
-                  <button onClick={handleRestore} className="p-1.5 hover:bg-green-50 hover:text-green-600 rounded-md text-slate-500 transition-colors" title="Restore">
+                  <button onClick={handleRestore} className="p-1.5 hover:bg-green-50 dark:hover:bg-green-900/30 hover:text-green-600 dark:hover:text-green-400 rounded-md text-slate-500 dark:text-slate-400 transition-colors" title="Restore">
                     <RefreshCcw className="h-4 w-4" />
                   </button>
-                  <button onClick={handlePermanentDelete} className="p-1.5 hover:bg-red-50 rounded-md text-slate-500 hover:text-red-600 transition-colors" title="Delete Forever">
+                  <button onClick={() => setShowDeleteDialog(true)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Delete Forever">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </>
               ) : (
                 <>
-                  <button onClick={() => setIsEditOpen(true)} className="p-1.5 hover:bg-blue-50 hover:text-blue-600 rounded-md text-slate-500 transition-colors">
+                  <button onClick={() => setIsEditOpen(true)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
                     <Pencil className="h-4 w-4" />
                   </button>
-                  <button onClick={handleCopy} className="p-1.5 hover:bg-gray-100 rounded-md text-slate-500 transition-colors">
-                    <Copy className="h-4 w-4" />
+                  <button onClick={handleCopy} className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 transition-colors">
+                    {isCopied ? <Check className="h-4 w-4 text-green-600"/> : <Copy className="h-4 w-4" />}
                   </button>
-                  <button onClick={toggleFavorite} className="p-1.5 hover:bg-red-50 rounded-md transition-colors">
-                    <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : "text-slate-500"}`} />
+                  <button onClick={toggleFavorite} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors">
+                    <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : "text-slate-500 dark:text-slate-400"}`} />
                   </button>
-                  <button onClick={handleSoftDelete} className="p-1.5 hover:bg-red-50 rounded-md text-slate-500 hover:text-red-500 transition-colors" title="Move to Trash">
+                  <button onClick={handleSoftDelete} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors" title="Move to Trash">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </>
@@ -165,20 +183,49 @@ export function LinkCard({ link }: LinkCardProps) {
         </div>
       </div>
       
-      {/* Edit Modal (Same as before) */}
+      {/* EDIT MODAL */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Edit Link</DialogTitle></DialogHeader>
+        <DialogContent className="w-[95vw] max-w-md rounded-xl bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
+          <DialogHeader><DialogTitle className="text-slate-900 dark:text-white">Edit Link</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Title</label>
-              <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
+              <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
           <DialogFooter>
-            <button onClick={() => setIsEditOpen(false)} className="text-sm text-gray-500 font-medium px-4 py-2 hover:bg-gray-100 rounded-lg">Cancel</button>
-            <button onClick={saveEdit} disabled={isSaving} className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg font-medium hover:bg-blue-700">
+            <button onClick={() => setIsEditOpen(false)} className="text-sm text-gray-500 dark:text-slate-400 font-medium px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
+            <button onClick={saveEdit} disabled={isSaving} className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                {isSaving ? "Saving..." : "Save Changes"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DELETE MODAL */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="w-[95vw] max-w-sm rounded-xl bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 dark:text-white">{isArchived ? "Delete Forever?" : "Move to Trash?"}</DialogTitle>
+            <DialogDescription className="text-slate-500 dark:text-slate-400">
+              {isArchived 
+                ? "This action cannot be undone. This link will be permanently removed." 
+                : "You can restore this link later from the Trash tab."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <button 
+              onClick={() => setShowDeleteDialog(false)} 
+              className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={confirmDelete} 
+              disabled={isDeleting} 
+              className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
             </button>
           </DialogFooter>
         </DialogContent>

@@ -24,7 +24,7 @@ export function CreateFolderModal() {
       if (res.ok) {
         setOpen(false);
         setName("");
-        router.refresh(); // Refresh sidebar to show new folder
+        router.refresh(); 
       }
     } catch (error) {
       console.error(error);
@@ -36,14 +36,14 @@ export function CreateFolderModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded-md hover:bg-blue-50">
+        <button className="text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20">
           <Plus className="h-4 w-4" />
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-106.25">
+      <DialogContent className="w-[95vw] sm:max-w-md rounded-xl bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FolderPlus className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+            <FolderPlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Create Collection
           </DialogTitle>
         </DialogHeader>
@@ -51,14 +51,14 @@ export function CreateFolderModal() {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Design Inspiration, React Docs..."
-            className="w-full border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="e.g. Design Inspiration..."
+            className="w-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600"
             autoFocus
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           />
         </div>
         <DialogFooter>
-          <button onClick={() => setOpen(false)} className="text-sm text-gray-500 font-medium px-4 py-2 hover:bg-gray-100 rounded-lg">
+          <button onClick={() => setOpen(false)} className="text-sm text-gray-500 dark:text-slate-400 font-medium px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg">
             Cancel
           </button>
           <button 
