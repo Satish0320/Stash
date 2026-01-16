@@ -95,7 +95,7 @@ export function LinkCard({ link }: LinkCardProps) {
     const newState = !isFavorite;
     setIsFavorite(newState);
     try {
-      await fetch(`/api/links/${link.id}/favorite`, {
+      await fetch(`/api/links/${link.id}`, {
         method: "PATCH",
         body: JSON.stringify({ isFavorite: newState }),
       });
